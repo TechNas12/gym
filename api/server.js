@@ -2586,7 +2586,7 @@ function bodyDeadline(req) {
 // The Capacitor WebView origins of the Android and iOS app.
 const APP_ORIGINS = new Set(['https://localhost', 'capacitor://localhost', 'http://localhost']);
 
-const server = http.createServer(async (req, res) => {
+export async function requestHandler(req, res) {
   bodyDeadline(req);
   // Same-origin (the deployed nginx-proxied web app) never triggers CORS, so this only matters
   // for the paired mobile app calling in from its own WebView origin. It carries no cookie
@@ -2659,7 +2659,9 @@ const server = http.createServer(async (req, res) => {
     console.error(key, e);
     if (!res.headersSent) json(res, 500, { error: 'server error' });
   }
-});
+}
+
+const server = http.createServer(requestHandler);
 // Node's default of 300 s for a whole request would answer 408 to a 40 MB video on a ~1 Mbit/s
 // uplink. Half an hour covers that; a stalled upload is cut much sooner by its own 60 s idle
 // timer in media.js, a client that never finishes its headers still meets headersTimeout, and
@@ -2670,4 +2672,7 @@ server.headersTimeout = 60000;
 // port that was actually bound: with PORT=0 the OS picks one, and a caller that did not choose it
 // (the tests spawn the server that way, and so does anyone running two instances on one box) has
 // no other way to learn it.
-server.listen(PORT, () => console.log(`gym-api on :${server.address().port} (rpID=${RP_ID}, origin=${ORIGIN})`));
+if (!process.env.VERCEL) {
+  server.listen(PORT, () => console.log(`gym-api on :${server.address().port} (rpID=${RP_ID}, origin=${ORIGIN})`));
+}
+export default requestHandler;
